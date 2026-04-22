@@ -9,217 +9,128 @@ from streamlit_geolocation import streamlit_geolocation
 st.set_page_config(page_title="Disney Family Guide", page_icon="✨", layout="wide")
 
 st.title("✨ Mon Guide Magique - Disneyland")
-st.markdown("*Optimisation Totale : Famille, Spectacles et Relais Parent.*")
+st.markdown("*Optimisation Triple : Manèges, Parcours Découverte et Spectacles.*")
 
 # ---------------------------------------------------------
-# 2. BASE DE DONNÉES 
+# 2. BASE DE DONNÉES (Catégorisation en 3 types)
 # ---------------------------------------------------------
 attractions_statiques = {
-    "Pirates of the Caribbean": {"coords": (48.8736, 2.7751), "immersion": 10, "pop": 9, "parc": "Disneyland", "type": "famille"},
-    "small world": {"coords": (48.8745, 2.7768), "immersion": 8, "pop": 8, "parc": "Disneyland", "type": "famille"},
-    "Phantom Manor": {"coords": (48.8702, 2.7796), "immersion": 9, "pop": 8, "parc": "Disneyland", "type": "famille"},
-    "Peter Pan's Flight": {"coords": (48.8732, 2.7766), "immersion": 9, "pop": 10, "parc": "Disneyland", "type": "famille"},
-    "Big Thunder Mountain": {"coords": (48.8715, 2.7777), "immersion": 8, "pop": 10, "parc": "Disneyland", "type": "famille"},
-    "Buzz Lightyear": {"coords": (48.8741, 2.7781), "immersion": 7, "pop": 8, "parc": "Disneyland", "type": "famille"},
-    "Star Tours": {"coords": (48.8745, 2.7775), "immersion": 8, "pop": 8, "parc": "Disneyland", "type": "famille"},
-    "Ratatouille": {"coords": (48.8681, 2.7794), "immersion": 10, "pop": 9, "parc": "Studios", "type": "famille"},
-    
-    "Hyperspace Mountain": {"coords": (48.8735, 2.7788), "immersion": 8, "pop": 9, "parc": "Disneyland", "type": "sensation"},
-    "Indiana Jones": {"coords": (48.8722, 2.7738), "immersion": 8, "pop": 8, "parc": "Disneyland", "type": "sensation"},
-    "Crush's Coaster": {"coords": (48.8682, 2.7806), "immersion": 9, "pop": 10, "parc": "Studios", "type": "sensation"},
-    "Avengers Assemble": {"coords": (48.8686, 2.7816), "immersion": 8, "pop": 8, "parc": "Studios", "type": "sensation"},
-    "Spider-Man": {"coords": (48.8684, 2.7820), "immersion": 9, "pop": 10, "parc": "Studios", "type": "sensation"},
-    "Tower of Terror": {"coords": (48.8675, 2.7790), "immersion": 10, "pop": 9, "parc": "Studios", "type": "sensation"},
+    # --- Manèges Classiques (Famille & Sensation) ---
+    "Pirates of the Caribbean": {"coords": (48.8736, 2.7751), "immersion": 10, "pop": 9, "parc": "Disneyland", "type": "ride"},
+    "small world": {"coords": (48.8745, 2.7768), "immersion": 8, "pop": 8, "parc": "Disneyland", "type": "ride"},
+    "Phantom Manor": {"coords": (48.8702, 2.7796), "immersion": 9, "pop": 8, "parc": "Disneyland", "type": "ride"},
+    "Peter Pan's Flight": {"coords": (48.8732, 2.7766), "immersion": 9, "pop": 10, "parc": "Disneyland", "type": "ride"},
+    "Big Thunder Mountain": {"coords": (48.8715, 2.7777), "immersion": 8, "pop": 10, "parc": "Disneyland", "type": "ride"},
+    "Buzz Lightyear": {"coords": (48.8741, 2.7781), "immersion": 7, "pop": 8, "parc": "Disneyland", "type": "ride"},
+    "Ratatouille": {"coords": (48.8681, 2.7794), "immersion": 10, "pop": 9, "parc": "Studios", "type": "ride"},
+    "Hyperspace Mountain": {"coords": (48.8735, 2.7788), "immersion": 8, "pop": 9, "parc": "Disneyland", "type": "ride"},
+    "Tower of Terror": {"coords": (48.8675, 2.7790), "immersion": 10, "pop": 9, "parc": "Studios", "type": "ride"},
+
+    # --- Attractions Secondaires (Parcours à pied / Walkthrough) ---
+    "Tanière du Dragon": {"coords": (48.8730, 2.7760), "immersion": 9, "pop": 5, "parc": "Disneyland", "type": "walkthrough"},
+    "Nautilus": {"coords": (48.8738, 2.7780), "immersion": 8, "pop": 5, "parc": "Disneyland", "type": "walkthrough"},
+    "Alice's Curious Labyrinth": {"coords": (48.8748, 2.7758), "immersion": 7, "pop": 6, "parc": "Disneyland", "type": "walkthrough"},
+    "Passage Enchanté d'Aladdin": {"coords": (48.8728, 2.7745), "immersion": 7, "pop": 4, "parc": "Disneyland", "type": "walkthrough"},
+    "Swiss Family Robinson": {"coords": (48.8720, 2.7740), "immersion": 7, "pop": 5, "parc": "Disneyland", "type": "walkthrough"},
+    "Fort Comstock": {"coords": (48.8710, 2.7770), "immersion": 6, "pop": 4, "parc": "Disneyland", "type": "walkthrough"},
 }
 
 # ---------------------------------------------------------
-# 3. RÉCUPÉRATION DES DONNÉES (Anti-Crash)
+# 3. RÉCUPÉRATION DES DONNÉES LIVE
 # ---------------------------------------------------------
 @st.cache_data(ttl=300)
 def get_live_data(user_coords):
     url = "https://api.themeparks.wiki/v1/entity/e8d0207f-da8a-4048-bec8-117aa946b2c2/live"
     try:
         data = requests.get(url, timeout=10).json()
-        live_attractions = []
-        live_spectacles = []
+        live_rides, live_walks, live_specs = [], [], []
         
         for item in data.get("liveData", []):
             name = item.get("name", "")
-            if item.get("status") != "OPERATING":
-                continue
+            if item.get("status") != "OPERATING": continue
 
-            specs = None
-            for attr_name, s in attractions_statiques.items():
-                if attr_name.lower() in name.lower():
-                    specs = s
-                    break
+            specs = next((s for n, s in attractions_statiques.items() if n.lower() in name.lower()), None)
             
             if not specs:
-                mots_spectacles = ["show", "spectacle", "parade", "meet", "rencontre", "theater", "character"]
-                if any(mot in name.lower() for mot in mots_spectacles):
+                if any(m in name.lower() for m in ["show", "spectacle", "parade", "meet", "rencontre"]):
                     specs = {"type": "spectacle"}
                 else:
-                    specs = {"type": "famille", "coords": user_coords, "immersion": 5, "pop": 5, "parc": "Inconnu"}
+                    specs = {"type": "ride", "coords": user_coords, "immersion": 5, "pop": 5, "parc": "Autre"}
 
-            # ---- CORRECTION DU BUG ICI : Lecture sécurisée des files d'attente ----
-            queue_data = item.get("queue") or {} # Si queue est 'null', ça devient un dictionnaire vide
-            standby = queue_data.get("STANDBY") or {}
-            single = queue_data.get("SINGLE_RIDER") or {}
-            
-            wait_standby = standby.get("waitTime", 0)
-            wait_single = single.get("waitTime", None)
-            
+            q = item.get("queue") or {}
             format_item = {
-                "nom": name, 
-                "wait": wait_standby if wait_standby is not None else 0,
-                "single_wait": wait_single,
-                "coords": specs.get("coords", user_coords),
-                "immersion": specs.get("immersion", 5),
-                "pop": specs.get("pop", 5),
-                "parc": specs.get("parc", "Parc"),
-                "type": specs.get("type", "famille")
+                "nom": name, "wait": (q.get("STANDBY") or {}).get("waitTime", 0),
+                "single": (q.get("SINGLE_RIDER") or {}).get("waitTime"),
+                "coords": specs.get("coords", user_coords), "type": specs.get("type"),
+                "immersion": specs.get("immersion", 5), "pop": specs.get("pop", 5), "parc": specs.get("parc")
             }
 
-            if format_item["type"] == "spectacle":
-                live_spectacles.append(format_item)
-            else:
-                live_attractions.append(format_item)
-                
-        return live_attractions, live_spectacles
-    except Exception as e: 
-        st.error(f"Erreur de réseau. Veuillez réessayer. ({e})")
-        return [], []
+            if format_item["type"] == "spectacle": live_specs.append(format_item)
+            elif format_item["type"] == "walkthrough": live_walks.append(format_item)
+            else: live_rides.append(format_item)
+        return live_rides, live_walks, live_specs
+    except: return [], [], []
 
 # ---------------------------------------------------------
-# 4. GPS & RÉGLAGES
+# 4. GPS & CALCULS
 # ---------------------------------------------------------
-st.sidebar.header("📍 Ma Position")
-geo_data = streamlit_geolocation()
-if geo_data and geo_data.get('latitude'):
-    user_coords = (geo_data['latitude'], geo_data['longitude'])
-    st.sidebar.success("✅ GPS Connecté")
-else:
-    st.sidebar.warning("GPS en attente... (Défaut : Entrée)")
-    user_coords = (48.871, 2.776)
+st.sidebar.header("📍 Position")
+geo = streamlit_geolocation()
+u_coords = (geo['latitude'], geo['longitude']) if geo and geo.get('latitude') else (48.871, 2.776)
+coeff = 1.6 if st.sidebar.toggle("Mode Poussette", value=True) else 1.0
 
-attractions, spectacles = get_live_data(user_coords)
+rides, walks, specs = get_live_data(u_coords)
 
-st.sidebar.header("⚙️ Profil Famille")
-coeff_vitesse = 1.6 if st.sidebar.toggle("Rythme Poussette", value=True) else 1.0
-mode_single_rider = st.sidebar.toggle("🎢 Chercher des Single Riders", value=True)
+def get_walk_time(c1, c2, c):
+    d = math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2)
+    return max(1, int(d * 2200 * c))
 
-if st.sidebar.button("🔄 Actualiser les données"):
-    st.cache_data.clear()
-    st.rerun()
+# Scoring des Rides
+for r in rides:
+    r['w_time'] = get_walk_time(u_coords, r['coords'], coeff)
+    r['score'] = (r['immersion'] * r['pop']) / (r['wait'] + r['w_time'] + 1)
+rides.sort(key=lambda x: x["score"], reverse=True)
 
-# ---------------------------------------------------------
-# 5. ALGORITHME DE CALCUL
-# ---------------------------------------------------------
-def get_travel_time(c1, c2, c):
-    dist = math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2)
-    return max(1, int(dist * 2200 * c))
-
-attractions_famille = []
-attractions_thrill = []
-
-for a in attractions:
-    a['walk'] = get_travel_time(user_coords, a['coords'], coeff_vitesse)
-    total_time = a['wait'] + a['walk']
-    a['score'] = (a['immersion'] * a['pop']) / (total_time + 1)
-    
-    # Couleurs communes
-    if a['score'] > 3.0: a['status'], a['color'], a['border'] = "🟢", "#d4edda", "green"
-    elif a['score'] > 1.5: a['status'], a['color'], a['border'] = "🟡", "#fff3cd", "orange"
-    else: a['status'], a['color'], a['border'] = "🔴", "#f8d7da", "red"
-    
-    if a['type'] == "famille":
-        attractions_famille.append(a)
-    elif a['type'] == "sensation":
-        attractions_thrill.append(a) # On ne les perd plus jamais !
-
-attractions_famille.sort(key=lambda x: x["score"], reverse=True)
+# Scoring des Walkthroughs (Proximité pure)
+for w in walks:
+    w['w_time'] = get_walk_time(u_coords, w['coords'], coeff)
+walks.sort(key=lambda x: x["w_time"])
 
 # ---------------------------------------------------------
-# 6. AFFICHAGE EN COLONNES
+# 6. AFFICHAGE TRIPLE COLONNE
 # ---------------------------------------------------------
-col_gauche, col_droite = st.columns([2, 1])
+c1, c2, c3 = st.columns(3)
 
-with col_gauche:
-    st.header("🎡 Optimisation des Manèges")
-    if not attractions_famille:
-        st.warning("Aucune attraction n'est disponible ou le parc est fermé.")
-    else:
-        best = attractions_famille[0]
-        combos_possibles = [
-            r for r in attractions_famille 
-            if r['nom'] != best['nom'] and r['parc'] == best['parc'] and r['wait'] <= 40           
-        ]
-        combos_possibles.sort(key=lambda x: get_travel_time(best['coords'], x['coords'], coeff_vitesse))
-        combo = combos_possibles[0] if combos_possibles else None
+with c1:
+    st.header("🎡 Manèges")
+    if rides:
+        best = rides[0]
+        st.success(f"**TOP : {best['nom']}**\n\n⏳ {best['wait']} min | 🚶 {best['w_time']} min")
+        with st.expander("Autres manèges"):
+            for r in rides[1:8]:
+                st.write(f"**{r['nom']}** ({r['wait']} min)")
+    else: st.write("Aucun manège.")
 
-        col_c1, col_c2 = st.columns(2)
-        with col_c1:
+with c2:
+    st.header("🐉 Secondaires")
+    st.info("Parcours à pied sans attente, idéal pour Samuel et Eliott.")
+    if walks:
+        for w in walks[:5]:
             st.markdown(f"""
-            <div style="background:{best['color']}; border-left:5px solid {best['border']}; padding:15px; border-radius:10px; height:180px;">
-                <h4 style="margin:0; color:black;">1. {best['nom']}</h4>
-                <p style="margin:10px 0; color:#333;">⏳ Attente : <b>{best['wait']} min</b><br>🚶 Marche : <b>{best['walk']} min</b></p>
-                <p style="font-size:12px; color:grey;">Parc : {best['parc']}</p>
+            <div style="background:#f0f2f6; padding:10px; border-radius:5px; margin-bottom:5px; border-left:5px solid #6c757d;">
+                <p style="margin:0; font-weight:bold; color:black;">{w['nom']}</p>
+                <p style="margin:0; font-size:12px; color:grey;">🚶 à {w['w_time']} min de vous</p>
             </div>
             """, unsafe_allow_html=True)
-            
-        with col_c2:
-            if combo:
-                walk_to_next = get_travel_time(best['coords'], combo['coords'], coeff_vitesse)
-                st.markdown(f"""
-                <div style="background:{combo['color']}; border-left:5px solid {combo['border']}; padding:15px; border-radius:10px; height:180px;">
-                    <h4 style="margin:0; color:black;">2. {combo['nom']}</h4>
-                    <p style="margin:10px 0; color:#333;">⏳ Attente : <b>{combo['wait']} min</b><br>🚶 +{walk_to_next} min du premier</p>
-                    <p style="font-size:12px; color:grey;">Même zone !</p>
-                </div>
-                """, unsafe_allow_html=True)
+    else: st.write("Rien à proximité.")
 
-        # --- RELAIS PARENT ---
-        if mode_single_rider and attractions_thrill:
-            st.divider()
-            thrill_proches = [t for t in attractions_thrill if t['parc'] == best['parc'] and t['single_wait'] is not None and t['single_wait'] <= 30]
-            thrill_proches.sort(key=lambda x: x['walk'])
-            
-            if thrill_proches:
-                bonus = thrill_proches[0]
-                st.markdown(f"""
-                <div style="background:#e2e3e5; border-left:5px solid #343a40; padding:15px; border-radius:10px;">
-                    <h4 style="margin:0; color:black;">🎢 Relais Parent : {bonus['nom']}</h4>
-                    <p style="margin:10px 0; color:#333;">
-                        ⏳ File Solo : <b>{bonus['single_wait']} min</b> (Normal: {bonus['wait']} min)<br>
-                        🚶 À {bonus['walk']} min. Idéal pendant la sieste de bébé !
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
-
-        # --- AUTRES OPTIONS FAMILLES ---
-        with st.expander("Voir toutes les autres attractions familles ouvertes"):
-            for r in attractions_famille[1:]:
-                if not combo or r['nom'] != combo['nom']:
-                    st.write(f"**{r['status']} {r['nom']}** - Attente: {r['wait']} min")
-
-        # --- TOUTES LES SENSATIONS FORTES ---
-        with st.expander("🎢 Voir les attractions à sensations (Classique)"):
-            if not attractions_thrill:
-                st.write("Aucune attraction à sensations détectée pour le moment.")
-            for t in attractions_thrill:
-                single_txt = f"{t['single_wait']} min" if t['single_wait'] is not None else "Fermé"
-                st.write(f"**{t['nom']}** - Attente Normale: {t['wait']} min | File Solo: {single_txt}")
-
-with col_droite:
-    st.header("🎭 Spectacles & Parades")
-    st.info("Expériences actuellement ouvertes ou prévues.")
-    
-    if spectacles:
-        for s in spectacles:
+with c3:
+    st.header("🎭 Spectacles")
+    if specs:
+        for s in specs:
             st.markdown(f"""
-            <div style="background:#e8f4f8; border-left:5px solid #17a2b8; padding:10px; border-radius:5px; margin-bottom:10px;">
-                <p style="margin:0; color:black; font-weight:bold;">{s['nom']}</p>
+            <div style="background:#e8f4f8; padding:10px; border-radius:5px; margin-bottom:5px; border-left:5px solid #17a2b8;">
+                <p style="margin:0; font-weight:bold; color:black;">{s['nom']}</p>
             </div>
             """, unsafe_allow_html=True)
-    else:
-        st.write("Aucun spectacle détecté pour le moment.")
+    else: st.write("Aucun spectacle.")
