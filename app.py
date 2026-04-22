@@ -5,40 +5,74 @@ from datetime import datetime, timezone
 from streamlit_geolocation import streamlit_geolocation
 
 # =========================================================
-# 1. CONFIGURATION & CSS PERSONNALISÉ (Le grand lifting !)
+# 1. CONFIGURATION & CSS (DARK/LIGHT MODE READY)
 # =========================================================
 st.set_page_config(page_title="Disney Premium", page_icon="🏰", layout="centered")
 
-# Injection de CSS pour créer des "Cartes" façon application mobile native
+# Le CSS magique qui s'adapte au thème du téléphone
 st.markdown("""
 <style>
-    /* Style global des cartes */
-    .d-card {
-        background-color: #ffffff;
-        border-radius: 15px;
-        padding: 16px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
-        margin-bottom: 16px;
-        border-left: 6px solid #e5e7eb;
-        transition: transform 0.2s ease;
+    /* VARIABLES THEME CLAIR (Par défaut) */
+    :root {
+        --bg-card: #ffffff;
+        --text-main: #1f2937;
+        --text-sub: #4b5563;
+        --border-color: #e5e7eb;
+        --bg-badge: #f1f5f9;
+        --text-badge: #475569;
+        --bg-blue: #eff6ff;
+        --bg-pink: #fdf2f8;
+        --bg-dark: #f8fafc;
     }
-    /* Couleurs de bordure selon le statut */
+
+    /* VARIABLES THEME SOMBRE (S'active tout seul !) */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-card: #262730;
+            --text-main: #f8fafc;
+            --text-sub: #cbd5e1;
+            --border-color: #333344;
+            --bg-badge: #334155;
+            --text-badge: #e2e8f0;
+            --bg-blue: #1e3a8a30; /* Fond bleuté transparent */
+            --bg-pink: #83184330; /* Fond rosé transparent */
+            --bg-dark: #0f172a;
+        }
+    }
+
+    /* Style global des cartes utilisant les variables */
+    .d-card {
+        background-color: var(--bg-card);
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 16px;
+        border-left: 6px solid var(--border-color);
+        border-top: 1px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    /* Les couleurs de bordure (restent vives en dark et light) */
     .d-card.green { border-left-color: #10b981; }
     .d-card.orange { border-left-color: #f59e0b; }
     .d-card.red { border-left-color: #ef4444; }
-    .d-card.dark { border-left-color: #374151; background-color: #f8fafc; }
-    .d-card.blue { border-left-color: #3b82f6; background-color: #eff6ff; }
-    .d-card.pink { border-left-color: #ec4899; background-color: #fdf2f8; }
+    
+    /* Fonds spécifiques qui utilisent les variables transparentes */
+    .d-card.dark { border-left-color: #64748b; background-color: var(--bg-dark); }
+    .d-card.blue { border-left-color: #3b82f6; background-color: var(--bg-blue); }
+    .d-card.pink { border-left-color: #ec4899; background-color: var(--bg-pink); }
     
     /* Textes */
-    .d-title { margin: 0 0 8px 0; color: #1f2937; font-size: 18px; font-weight: 700; }
-    .d-text { margin: 4px 0; color: #4b5563; font-size: 14px; display: flex; align-items: center; }
+    .d-title { margin: 0 0 8px 0; color: var(--text-main); font-size: 18px; font-weight: 700; }
+    .d-title-small { margin: 0 0 4px 0; color: var(--text-main); font-size: 15px; font-weight: 700; }
+    .d-text { margin: 4px 0; color: var(--text-sub); font-size: 14px; }
     
-    /* Petits badges ronds */
+    /* Badges */
     .d-badge { 
         display: inline-block; padding: 2px 8px; border-radius: 12px; 
         font-size: 11px; font-weight: bold; margin-left: 8px;
-        background: #f1f5f9; color: #475569;
+        background: var(--bg-badge); color: var(--text-badge);
     }
     .badge-studios { background: #e0e7ff; color: #4338ca; }
     .badge-parc { background: #dcfce7; color: #15803d; }
@@ -46,7 +80,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🏰 Guide VIP")
-st.markdown("*Optimisé pour la navigation mobile.*")
 
 # =========================================================
 # 2. BASE DE DONNÉES 
@@ -166,7 +199,6 @@ data["walk"].sort(key=lambda x: x['walk'])
 # =========================================================
 # 6. AFFICHAGE MOBILE-FIRST (ONGLETS)
 # =========================================================
-# Création de 3 onglets (parfait pour scroller sur téléphone)
 tab1, tab2, tab3 = st.tabs(["🎡 Manèges", "🍼 Pauses", "🎭 Spectacles"])
 
 def get_badge(parc):
@@ -177,7 +209,6 @@ with tab1:
         best = data["famille"][0]
         st.markdown("### 🏆 Recommandation N°1")
         
-        # Carte du meilleur choix
         st.markdown(f"""
         <div class="d-card green">
             <h3 class="d-title">{best['nom']} <span class="d-badge {get_badge(best['parc'])}">{best['parc']}</span></h3>
@@ -186,15 +217,14 @@ with tab1:
         </div>
         """, unsafe_allow_html=True)
         
-        # Menu déroulant pour le reste
         with st.expander("Voir les autres options familiales"):
             for r in data["famille"][1:]:
                 color = "orange" if r['wait'] > 30 else "green"
                 if r['wait'] > 60: color = "red"
                 st.markdown(f"""
-                <div class="d-card {color}" style="padding:10px;">
-                    <div style="font-weight:bold; color:#1f2937;">{r['nom']}</div>
-                    <div style="font-size:13px; color:#4b5563;">⏳ {r['wait']} min | 🚶 {r['walk']} min</div>
+                <div class="d-card {color}" style="padding:12px;">
+                    <h4 class="d-title-small">{r['nom']}</h4>
+                    <div class="d-text">⏳ {r['wait']} min | 🚶 {r['walk']} min</div>
                 </div>
                 """, unsafe_allow_html=True)
     else: st.info("Aucun manège familial disponible.")
@@ -204,9 +234,9 @@ with tab1:
         sing_txt = f"{t['single']} min" if t['single'] is not None else "Fermée"
         st.markdown(f"""
         <div class="d-card dark">
-            <h3 class="d-title" style="color:#f8fafc; font-size:16px;">⚡ {t['nom']}</h3>
-            <div class="d-text" style="color:#cbd5e1;">👤 File Solo : <b>{sing_txt}</b></div>
-            <div class="d-text" style="color:#94a3b8; font-size:12px;">File classique : {t['wait']} min | 🚶 à {t['walk']} min</div>
+            <h3 class="d-title">⚡ {t['nom']}</h3>
+            <div class="d-text">👤 File Solo : <b>{sing_txt}</b></div>
+            <div class="d-text">👥 File classique : {t['wait']} min | 🚶 à {t['walk']} min</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -216,7 +246,7 @@ with tab2:
         style = "pink" if "Baby" in w['nom'] or "Bébé" in w['nom'] else "blue"
         st.markdown(f"""
         <div class="d-card {style}">
-            <h3 class="d-title" style="font-size:16px;">{w['nom']} <span class="d-badge {get_badge(w['parc'])}">{w['parc']}</span></h3>
+            <h3 class="d-title">{w['nom']} <span class="d-badge {get_badge(w['parc'])}">{w['parc']}</span></h3>
             <div class="d-text">🚶 À {w['walk']} min de votre position</div>
         </div>
         """, unsafe_allow_html=True)
@@ -227,7 +257,7 @@ with tab3:
         for s in sorted(data["show"], key=lambda x: x['time']):
             st.markdown(f"""
             <div class="d-card blue">
-                <h3 class="d-title" style="font-size:16px;">{s['nom']}</h3>
+                <h3 class="d-title">{s['nom']}</h3>
                 <div class="d-text">🕒 Prochaine séance : <b>{s['time']}</b></div>
             </div>
             """, unsafe_allow_html=True)
