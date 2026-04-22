@@ -9,66 +9,36 @@ from streamlit_geolocation import streamlit_geolocation
 # =========================================================
 st.set_page_config(page_title="Disney Premium", page_icon="🏰", layout="centered")
 
-# Le CSS magique qui s'adapte au thème du téléphone
 st.markdown("""
 <style>
-    /* VARIABLES THEME CLAIR (Par défaut) */
     :root {
-        --bg-card: #ffffff;
-        --text-main: #1f2937;
-        --text-sub: #4b5563;
-        --border-color: #e5e7eb;
-        --bg-badge: #f1f5f9;
-        --text-badge: #475569;
-        --bg-blue: #eff6ff;
-        --bg-pink: #fdf2f8;
-        --bg-dark: #f8fafc;
+        --bg-card: #ffffff; --text-main: #1f2937; --text-sub: #4b5563;
+        --border-color: #e5e7eb; --bg-badge: #f1f5f9; --text-badge: #475569;
+        --bg-blue: #eff6ff; --bg-pink: #fdf2f8; --bg-dark: #f8fafc;
     }
-
-    /* VARIABLES THEME SOMBRE (S'active tout seul !) */
     @media (prefers-color-scheme: dark) {
         :root {
-            --bg-card: #262730;
-            --text-main: #f8fafc;
-            --text-sub: #cbd5e1;
-            --border-color: #333344;
-            --bg-badge: #334155;
-            --text-badge: #e2e8f0;
-            --bg-blue: #1e3a8a30; /* Fond bleuté transparent */
-            --bg-pink: #83184330; /* Fond rosé transparent */
-            --bg-dark: #0f172a;
+            --bg-card: #262730; --text-main: #f8fafc; --text-sub: #cbd5e1;
+            --border-color: #333344; --bg-badge: #334155; --text-badge: #e2e8f0;
+            --bg-blue: #1e3a8a30; --bg-pink: #83184330; --bg-dark: #0f172a;
         }
     }
-
-    /* Style global des cartes utilisant les variables */
     .d-card {
-        background-color: var(--bg-card);
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        margin-bottom: 16px;
-        border-left: 6px solid var(--border-color);
-        border-top: 1px solid var(--border-color);
-        border-right: 1px solid var(--border-color);
-        border-bottom: 1px solid var(--border-color);
+        background-color: var(--bg-card); border-radius: 12px; padding: 16px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 16px;
+        border: 1px solid var(--border-color); border-left: 6px solid var(--border-color);
     }
-    
-    /* Les couleurs de bordure (restent vives en dark et light) */
     .d-card.green { border-left-color: #10b981; }
     .d-card.orange { border-left-color: #f59e0b; }
     .d-card.red { border-left-color: #ef4444; }
-    
-    /* Fonds spécifiques qui utilisent les variables transparentes */
     .d-card.dark { border-left-color: #64748b; background-color: var(--bg-dark); }
     .d-card.blue { border-left-color: #3b82f6; background-color: var(--bg-blue); }
     .d-card.pink { border-left-color: #ec4899; background-color: var(--bg-pink); }
     
-    /* Textes */
     .d-title { margin: 0 0 8px 0; color: var(--text-main); font-size: 18px; font-weight: 700; }
     .d-title-small { margin: 0 0 4px 0; color: var(--text-main); font-size: 15px; font-weight: 700; }
     .d-text { margin: 4px 0; color: var(--text-sub); font-size: 14px; }
     
-    /* Badges */
     .d-badge { 
         display: inline-block; padding: 2px 8px; border-radius: 12px; 
         font-size: 11px; font-weight: bold; margin-left: 8px;
@@ -82,37 +52,66 @@ st.markdown("""
 st.title("🏰 Guide VIP")
 
 # =========================================================
-# 2. BASE DE DONNÉES 
+# 2. BASE DE DONNÉES COMPLÈTE (LE POKÉDEX ENTIER)
 # =========================================================
 DB = {
-    # Famille
+    # --- RIDES FAMILIAUX : PARC DISNEYLAND ---
     "Pirates of the Caribbean": {"type": "famille", "indoor": True, "coords": (48.8736, 2.7751), "imm": 10, "pop": 9, "parc": "Parc Disneyland"},
     "small world": {"type": "famille", "indoor": True, "coords": (48.8745, 2.7768), "imm": 8, "pop": 8, "parc": "Parc Disneyland"},
     "Phantom Manor": {"type": "famille", "indoor": True, "coords": (48.8702, 2.7796), "imm": 9, "pop": 8, "parc": "Parc Disneyland"},
     "Peter Pan's Flight": {"type": "famille", "indoor": True, "coords": (48.8732, 2.7766), "imm": 9, "pop": 10, "parc": "Parc Disneyland"},
     "Big Thunder Mountain": {"type": "famille", "indoor": False, "coords": (48.8715, 2.7777), "imm": 8, "pop": 10, "parc": "Parc Disneyland"},
     "Buzz Lightyear": {"type": "famille", "indoor": True, "coords": (48.8741, 2.7781), "imm": 7, "pop": 8, "parc": "Parc Disneyland"},
-    "Ratatouille": {"type": "famille", "indoor": True, "coords": (48.8681, 2.7794), "imm": 10, "pop": 9, "parc": "Studios"},
+    "Star Tours": {"type": "famille", "indoor": True, "coords": (48.8745, 2.7775), "imm": 8, "pop": 8, "parc": "Parc Disneyland"},
+    "Autopia": {"type": "famille", "indoor": False, "coords": (48.8748, 2.7780), "imm": 5, "pop": 7, "parc": "Parc Disneyland"},
+    "Orbitron": {"type": "famille", "indoor": False, "coords": (48.8742, 2.7775), "imm": 5, "pop": 6, "parc": "Parc Disneyland"},
+    "Blanche-Neige": {"type": "famille", "indoor": True, "coords": (48.8733, 2.7762), "imm": 7, "pop": 7, "parc": "Parc Disneyland"},
+    "Pinocchio": {"type": "famille", "indoor": True, "coords": (48.8734, 2.7760), "imm": 7, "pop": 7, "parc": "Parc Disneyland"},
+    "Carrousel de Lancelot": {"type": "famille", "indoor": True, "coords": (48.8736, 2.7764), "imm": 6, "pop": 6, "parc": "Parc Disneyland"},
+    "Dumbo": {"type": "famille", "indoor": False, "coords": (48.8738, 2.7766), "imm": 6, "pop": 8, "parc": "Parc Disneyland"},
+    "Mad Hatter": {"type": "famille", "indoor": True, "coords": (48.8740, 2.7760), "imm": 6, "pop": 7, "parc": "Parc Disneyland"},
+    "Casey Jr.": {"type": "famille", "indoor": False, "coords": (48.8745, 2.7755), "imm": 6, "pop": 6, "parc": "Parc Disneyland"},
+    "Pays des Contes": {"type": "famille", "indoor": False, "coords": (48.8748, 2.7752), "imm": 7, "pop": 5, "parc": "Parc Disneyland"},
+    "Thunder Mesa Riverboat": {"type": "famille", "indoor": False, "coords": (48.8712, 2.7785), "imm": 8, "pop": 5, "parc": "Parc Disneyland"},
     
-    # Sensations
+    # --- RIDES FAMILIAUX : STUDIOS ---
+    "Ratatouille": {"type": "famille", "indoor": True, "coords": (48.8681, 2.7794), "imm": 10, "pop": 9, "parc": "Studios"},
+    "Spider-Man W.E.B.": {"type": "famille", "indoor": True, "coords": (48.8684, 2.7820), "imm": 9, "pop": 10, "parc": "Studios"},
+    "Slinky Dog": {"type": "famille", "indoor": False, "coords": (48.8685, 2.7812), "imm": 5, "pop": 6, "parc": "Studios"},
+    "Cars Quatre Roues": {"type": "famille", "indoor": False, "coords": (48.8680, 2.7815), "imm": 6, "pop": 5, "parc": "Studios"},
+    "Cars Road Trip": {"type": "famille", "indoor": False, "coords": (48.8670, 2.7820), "imm": 6, "pop": 5, "parc": "Studios"},
+    "Tapis Volants": {"type": "famille", "indoor": False, "coords": (48.8683, 2.7800), "imm": 5, "pop": 5, "parc": "Studios"},
+    "Frozen Ever After": {"type": "famille", "indoor": True, "coords": (48.8672, 2.7801), "imm": 10, "pop": 10, "parc": "Studios"},
+    
+    # --- SENSATIONS (CIBLES SINGLE RIDER) ---
     "Hyperspace Mountain": {"type": "sensation", "indoor": True, "coords": (48.8735, 2.7788), "imm": 8, "pop": 9, "parc": "Parc Disneyland"},
     "Indiana Jones": {"type": "sensation", "indoor": False, "coords": (48.8722, 2.7738), "imm": 8, "pop": 8, "parc": "Parc Disneyland"},
     "Crush's Coaster": {"type": "sensation", "indoor": True, "coords": (48.8682, 2.7806), "imm": 9, "pop": 10, "parc": "Studios"},
     "Avengers Assemble": {"type": "sensation", "indoor": True, "coords": (48.8686, 2.7816), "imm": 8, "pop": 8, "parc": "Studios"},
     "Tower of Terror": {"type": "sensation", "indoor": True, "coords": (48.8675, 2.7790), "imm": 10, "pop": 9, "parc": "Studios"},
-    "Spider-Man W.E.B.": {"type": "sensation", "indoor": True, "coords": (48.8684, 2.7820), "imm": 9, "pop": 10, "parc": "Studios"},
+    "Toy Soldiers Parachute": {"type": "sensation", "indoor": False, "coords": (48.8682, 2.7810), "imm": 6, "pop": 7, "parc": "Studios"},
+    "RC Racer": {"type": "sensation", "indoor": False, "coords": (48.8678, 2.7818), "imm": 6, "pop": 7, "parc": "Studios"},
 
-    # Pauses & Bébés
-    "Baby Care (Main Street)": {"type": "walk", "indoor": True, "coords": (48.8718, 2.7775), "imm": 10, "pop": 5, "parc": "Parc Disneyland"},
-    "Baby Care (Studios)": {"type": "walk", "indoor": True, "coords": (48.8675, 2.7805), "imm": 10, "pop": 5, "parc": "Studios"},
+    # --- WALKTHROUGHS & COINS BÉBÉ ---
+    "Coin Bébé (Main Street)": {"type": "walk", "indoor": True, "coords": (48.8718, 2.7775), "imm": 10, "pop": 5, "parc": "Parc Disneyland"},
+    "Baby Care Center (Studios)": {"type": "walk", "indoor": True, "coords": (48.8675, 2.7805), "imm": 10, "pop": 5, "parc": "Studios"},
     "Tanière du Dragon": {"type": "walk", "indoor": True, "coords": (48.8730, 2.7760), "imm": 9, "pop": 5, "parc": "Parc Disneyland"},
     "Nautilus": {"type": "walk", "indoor": True, "coords": (48.8738, 2.7780), "imm": 8, "pop": 5, "parc": "Parc Disneyland"},
+    "Alice's Curious Labyrinth": {"type": "walk", "indoor": False, "coords": (48.8748, 2.7758), "imm": 7, "pop": 6, "parc": "Parc Disneyland"},
+    "Aladdin": {"type": "walk", "indoor": True, "coords": (48.8728, 2.7745), "imm": 7, "pop": 4, "parc": "Parc Disneyland"},
+    "Robinson": {"type": "walk", "indoor": False, "coords": (48.8720, 2.7740), "imm": 7, "pop": 5, "parc": "Parc Disneyland"},
+    "Adventure Isle": {"type": "walk", "indoor": False, "coords": (48.8725, 2.7735), "imm": 8, "pop": 5, "parc": "Parc Disneyland"},
 
-    # Spectacles
+    # --- SPECTACLES MAJEURS ---
     "Mickey and the Magician": {"type": "show"},
     "Lion King": {"type": "show"},
     "Disney Stars on Parade": {"type": "show"},
-    "Disney Illuminations": {"type": "show"}
+    "Disney Illuminations": {"type": "show"},
+    "Stitch Live": {"type": "show"},
+    "Disney Junior": {"type": "show"},
+    "Frozen: A Musical": {"type": "show"},
+    "Pixar Musical": {"type": "show"},
+    "Electrical Sky Parade": {"type": "show"}
 }
 
 # =========================================================
@@ -201,8 +200,7 @@ data["walk"].sort(key=lambda x: x['walk'])
 # =========================================================
 tab1, tab2, tab3 = st.tabs(["🎡 Manèges", "🍼 Pauses", "🎭 Spectacles"])
 
-def get_badge(parc):
-    return "badge-studios" if "Studios" in parc else "badge-parc"
+def get_badge(parc): return "badge-studios" if "Studios" in parc else "badge-parc"
 
 with tab1:
     if data["famille"]:
@@ -217,14 +215,18 @@ with tab1:
         </div>
         """, unsafe_allow_html=True)
         
-        with st.expander("Voir les autres options familiales"):
+        with st.expander("Voir les autres options familiales (Triées par Score)"):
             for r in data["famille"][1:]:
                 color = "orange" if r['wait'] > 30 else "green"
                 if r['wait'] > 60: color = "red"
+                
+                # Bonus : Si Spider-Man ou Ratatouille a une file Single Rider, on l'affiche ici !
+                single_info = f" | 👤 Solo: {r['single']} min" if r.get('single') is not None else ""
+                
                 st.markdown(f"""
                 <div class="d-card {color}" style="padding:12px;">
-                    <h4 class="d-title-small">{r['nom']}</h4>
-                    <div class="d-text">⏳ {r['wait']} min | 🚶 {r['walk']} min</div>
+                    <h4 class="d-title-small">{r['nom']} <span class="d-badge {get_badge(r['parc'])}">{r['parc']}</span></h4>
+                    <div class="d-text">⏳ {r['wait']} min {single_info} | 🚶 {r['walk']} min</div>
                 </div>
                 """, unsafe_allow_html=True)
     else: st.info("Aucun manège familial disponible.")
@@ -234,7 +236,7 @@ with tab1:
         sing_txt = f"{t['single']} min" if t['single'] is not None else "Fermée"
         st.markdown(f"""
         <div class="d-card dark">
-            <h3 class="d-title">⚡ {t['nom']}</h3>
+            <h3 class="d-title">⚡ {t['nom']} <span class="d-badge {get_badge(t['parc'])}">{t['parc']}</span></h3>
             <div class="d-text">👤 File Solo : <b>{sing_txt}</b></div>
             <div class="d-text">👥 File classique : {t['wait']} min | 🚶 à {t['walk']} min</div>
         </div>
