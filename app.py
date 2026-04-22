@@ -9,14 +9,12 @@ from streamlit_geolocation import streamlit_geolocation
 st.set_page_config(page_title="Disney Family Guide", page_icon="✨", layout="wide")
 
 st.title("✨ Mon Guide Magique - Disneyland")
-st.markdown("*Optimisation Totale : Combos, Single Rider et Spectacles.*")
+st.markdown("*Optimisation Totale : Famille, Spectacles et Relais Parent.*")
 
 # ---------------------------------------------------------
-# 2. BASE DE DONNÉES (Attractions principales & Spectacles)
+# 2. BASE DE DONNÉES 
 # ---------------------------------------------------------
-# type = "famille", "sensation" ou "spectacle"
 attractions_statiques = {
-    # --- Familial ---
     "Pirates of the Caribbean": {"coords": (48.8736, 2.7751), "immersion": 10, "pop": 9, "parc": "Disneyland", "type": "famille"},
     "small world": {"coords": (48.8745, 2.7768), "immersion": 8, "pop": 8, "parc": "Disneyland", "type": "famille"},
     "Phantom Manor": {"coords": (48.8702, 2.7796), "immersion": 9, "pop": 8, "parc": "Disneyland", "type": "famille"},
@@ -26,25 +24,16 @@ attractions_statiques = {
     "Star Tours": {"coords": (48.8745, 2.7775), "immersion": 8, "pop": 8, "parc": "Disneyland", "type": "famille"},
     "Ratatouille": {"coords": (48.8681, 2.7794), "immersion": 10, "pop": 9, "parc": "Studios", "type": "famille"},
     
-    # --- Sensations ---
     "Hyperspace Mountain": {"coords": (48.8735, 2.7788), "immersion": 8, "pop": 9, "parc": "Disneyland", "type": "sensation"},
     "Indiana Jones": {"coords": (48.8722, 2.7738), "immersion": 8, "pop": 8, "parc": "Disneyland", "type": "sensation"},
     "Crush's Coaster": {"coords": (48.8682, 2.7806), "immersion": 9, "pop": 10, "parc": "Studios", "type": "sensation"},
     "Avengers Assemble": {"coords": (48.8686, 2.7816), "immersion": 8, "pop": 8, "parc": "Studios", "type": "sensation"},
     "Spider-Man": {"coords": (48.8684, 2.7820), "immersion": 9, "pop": 10, "parc": "Studios", "type": "sensation"},
     "Tower of Terror": {"coords": (48.8675, 2.7790), "immersion": 10, "pop": 9, "parc": "Studios", "type": "sensation"},
-
-    # --- Spectacles ---
-    "Mickey and the Magician": {"type": "spectacle"},
-    "Lion King": {"type": "spectacle"},
-    "Disney Stars on Parade": {"type": "spectacle"},
-    "Illuminations": {"type": "spectacle"},
-    "Disney Junior": {"type": "spectacle"},
-    "Stitch Live": {"type": "spectacle"}
 }
 
 # ---------------------------------------------------------
-# 3. RÉCUPÉRATION DES DONNÉES (Mode "Filet de sécurité")
+# 3. RÉCUPÉRATION DES DONNÉES (Anti-Crash)
 # ---------------------------------------------------------
 @st.cache_data(ttl=300)
 def get_live_data(user_coords):
@@ -59,27 +48,29 @@ def get_live_data(user_coords):
             if item.get("status") != "OPERATING":
                 continue
 
-            # On cherche si on la connait
             specs = None
             for attr_name, s in attractions_statiques.items():
                 if attr_name.lower() in name.lower():
                     specs = s
                     break
             
-            # Si on ne la connait pas, on l'ajoute quand même !
             if not specs:
-                # Détection automatique des spectacles/parades
-                mots_spectacles = ["show", "spectacle", "parade", "meet", "rencontre", "theater"]
+                mots_spectacles = ["show", "spectacle", "parade", "meet", "rencontre", "theater", "character"]
                 if any(mot in name.lower() for mot in mots_spectacles):
                     specs = {"type": "spectacle"}
                 else:
                     specs = {"type": "famille", "coords": user_coords, "immersion": 5, "pop": 5, "parc": "Inconnu"}
 
-            wait_standby = item.get("queue", {}).get("STANDBY", {}).get("waitTime", 0)
-            wait_single = item.get("queue", {}).get("SINGLE_RIDER", {}).get("waitTime", None)
+            # ---- CORRECTION DU BUG ICI : Lecture sécurisée des files d'attente ----
+            queue_data = item.get("queue") or {} # Si queue est 'null', ça devient un dictionnaire vide
+            standby = queue_data.get("STANDBY") or {}
+            single = queue_data.get("SINGLE_RIDER") or {}
+            
+            wait_standby = standby.get("waitTime", 0)
+            wait_single = single.get("waitTime", None)
             
             format_item = {
-                "nom": name, # On garde le vrai nom de l'API pour les inconnus
+                "nom": name, 
                 "wait": wait_standby if wait_standby is not None else 0,
                 "single_wait": wait_single,
                 "coords": specs.get("coords", user_coords),
@@ -95,7 +86,9 @@ def get_live_data(user_coords):
                 live_attractions.append(format_item)
                 
         return live_attractions, live_spectacles
-    except: return [], []
+    except Exception as e: 
+        st.error(f"Erreur de réseau. Veuillez réessayer. ({e})")
+        return [], []
 
 # ---------------------------------------------------------
 # 4. GPS & RÉGLAGES
@@ -106,7 +99,7 @@ if geo_data and geo_data.get('latitude'):
     user_coords = (geo_data['latitude'], geo_data['longitude'])
     st.sidebar.success("✅ GPS Connecté")
 else:
-    st.sidebar.warning("GPS en attente... (Défaut : Entrée du parc)")
+    st.sidebar.warning("GPS en attente... (Défaut : Entrée)")
     user_coords = (48.871, 2.776)
 
 attractions, spectacles = get_live_data(user_coords)
@@ -120,7 +113,7 @@ if st.sidebar.button("🔄 Actualiser les données"):
     st.rerun()
 
 # ---------------------------------------------------------
-# 5. ALGORITHME DE CALCUL (Pour la colonne de gauche)
+# 5. ALGORITHME DE CALCUL
 # ---------------------------------------------------------
 def get_travel_time(c1, c2, c):
     dist = math.sqrt((c1[0]-c2[0])**2 + (c1[1]-c2[1])**2)
@@ -134,27 +127,28 @@ for a in attractions:
     total_time = a['wait'] + a['walk']
     a['score'] = (a['immersion'] * a['pop']) / (total_time + 1)
     
+    # Couleurs communes
+    if a['score'] > 3.0: a['status'], a['color'], a['border'] = "🟢", "#d4edda", "green"
+    elif a['score'] > 1.5: a['status'], a['color'], a['border'] = "🟡", "#fff3cd", "orange"
+    else: a['status'], a['color'], a['border'] = "🔴", "#f8d7da", "red"
+    
     if a['type'] == "famille":
-        if a['score'] > 3.0: a['status'], a['color'], a['border'] = "🟢", "#d4edda", "green"
-        elif a['score'] > 1.5: a['status'], a['color'], a['border'] = "🟡", "#fff3cd", "orange"
-        else: a['status'], a['color'], a['border'] = "🔴", "#f8d7da", "red"
         attractions_famille.append(a)
-    elif a['type'] == "sensation" and a['single_wait'] is not None:
-        attractions_thrill.append(a)
+    elif a['type'] == "sensation":
+        attractions_thrill.append(a) # On ne les perd plus jamais !
 
 attractions_famille.sort(key=lambda x: x["score"], reverse=True)
 
 # ---------------------------------------------------------
 # 6. AFFICHAGE EN COLONNES
 # ---------------------------------------------------------
-col_gauche, col_droite = st.columns([2, 1]) # La colonne de gauche est 2 fois plus large
+col_gauche, col_droite = st.columns([2, 1])
 
 with col_gauche:
     st.header("🎡 Optimisation des Manèges")
     if not attractions_famille:
-        st.warning("Aucune attraction n'est disponible.")
+        st.warning("Aucune attraction n'est disponible ou le parc est fermé.")
     else:
-        # --- COMBO FAMILIAL ---
         best = attractions_famille[0]
         combos_possibles = [
             r for r in attractions_famille 
@@ -187,7 +181,7 @@ with col_gauche:
         # --- RELAIS PARENT ---
         if mode_single_rider and attractions_thrill:
             st.divider()
-            thrill_proches = [t for t in attractions_thrill if t['parc'] == best['parc'] and t['single_wait'] <= 30]
+            thrill_proches = [t for t in attractions_thrill if t['parc'] == best['parc'] and t['single_wait'] is not None and t['single_wait'] <= 30]
             thrill_proches.sort(key=lambda x: x['walk'])
             
             if thrill_proches:
@@ -202,16 +196,23 @@ with col_gauche:
                 </div>
                 """, unsafe_allow_html=True)
 
-        # --- TOUTES LES AUTRES ATTRACTIONS ---
-        with st.expander("Voir toutes les autres attractions ouvertes"):
+        # --- AUTRES OPTIONS FAMILLES ---
+        with st.expander("Voir toutes les autres attractions familles ouvertes"):
             for r in attractions_famille[1:]:
                 if not combo or r['nom'] != combo['nom']:
                     st.write(f"**{r['status']} {r['nom']}** - Attente: {r['wait']} min")
 
+        # --- TOUTES LES SENSATIONS FORTES ---
+        with st.expander("🎢 Voir les attractions à sensations (Classique)"):
+            if not attractions_thrill:
+                st.write("Aucune attraction à sensations détectée pour le moment.")
+            for t in attractions_thrill:
+                single_txt = f"{t['single_wait']} min" if t['single_wait'] is not None else "Fermé"
+                st.write(f"**{t['nom']}** - Attente Normale: {t['wait']} min | File Solo: {single_txt}")
 
 with col_droite:
     st.header("🎭 Spectacles & Parades")
-    st.info("Ces expériences sont actuellement en cours ou prévues aujourd'hui. (Consultez l'app officielle pour les horaires précis).")
+    st.info("Expériences actuellement ouvertes ou prévues.")
     
     if spectacles:
         for s in spectacles:
