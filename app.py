@@ -68,20 +68,24 @@ def get_live_wait_times():
 # Récupération des données fusionnées
 attractions = get_live_wait_times()
 
-# ---------------------------------------------------------
-# 4. INTERFACE UTILISATEUR (Sidebar)
-# ---------------------------------------------------------
-locations = {
-    "Entrée du Parc": (48.871, 2.776),
-    "Fantasyland (Château)": (48.873, 2.776),
-    "Adventureland": (48.873, 2.774),
-    "Discoveryland": (48.874, 2.778),
-    "Walt Disney Studios": (48.868, 2.779)
-}
+from streamlit_geolocation import streamlit_geolocation
 
+# ---------------------------------------------------------
+# 4. INTERFACE UTILISATEUR ET GPS EN DIRECT
+# ---------------------------------------------------------
 st.sidebar.header("📍 Ma Position")
-user_location_name = st.sidebar.selectbox("Où es-tu actuellement ?", list(locations.keys()))
-user_coords = locations[user_location_name]
+st.sidebar.markdown("Clique pour activer le GPS de ton téléphone :")
+
+# Le bouton magique qui appelle le GPS du navigateur
+geo_data = streamlit_geolocation()
+
+# Logique de récupération des coordonnées
+if geo_data and geo_data.get('latitude') is not None:
+    user_coords = (geo_data['latitude'], geo_data['longitude'])
+    st.sidebar.success("✅ Position GPS verrouillée !")
+else:
+    st.sidebar.warning("En attente du GPS... Position par défaut : Entrée du parc.")
+    user_coords = (48.871, 2.776) # Coordonnées de l'entrée par défaut
 
 st.sidebar.header("⚙️ Préférences")
 vitesse_marche = st.sidebar.radio("Rythme de marche :", ("Rapide", "Normal (avec Poussette)"))
